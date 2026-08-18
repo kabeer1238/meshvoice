@@ -4,6 +4,7 @@ import android.annotation.SuppressLint
 import android.content.Context
 import android.media.AudioAttributes
 import android.media.AudioDeviceInfo
+import android.media.AudioFocusRequest
 import android.media.AudioFormat
 import android.media.AudioManager
 import android.media.AudioRecord
@@ -64,6 +65,66 @@ class AudioEngine(
     @Volatile private var audioRecord: AudioRecord? = null
     @Volatile private var audioTrack: AudioTrack? = null
     @Volatile private var route: AudioRoute = AudioRoute.AUTO
+
+    // True once startTransmit() has been called and stopTransmit() hasn't --
+    // i.e. "the ride wants the mic on", independent of whether a phone call
+    // has temporarily taken the mic away. Used to decide whether to
+    // auto-resume capture when audio focus comes back after a call ends.
+    @Volatile private var desiredCapture = false
+
+    // True while a real phone call (or anything else with higher audio
+    // priority) holds the device's mic/speaker instead of us. No
+    // READ_PHONE_STATE permission needed -- AudioManager's focus callback is
+    // the platform-recommended way apps detect this, and it fires for calls
+    // specifically because the telephony stack requests focus for them.
+    @Volatile private var focusPaused = false
+    private var focusRequest: AudioFocusRequest? = null
+
+    private val focusListener = AudioManager.OnAudioFocusChangeListener { change ->
+        when (change) {
+            AudioManager.AUDIOFOCUS_LOSS,
+            AudioManager.AUDIOFOCUS_LOSS_TRANSIENT,
+            AudioManager.AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK -> {
+                focusPaused = true
+                capturing.set(false) // mic thread exits and releases AudioRecord in its own finally block
+                audioTrack?.let {
+                    try { it.stop() } catch (_: Throwable) {}
+                    try { it.release() } catch (_: Throwable) {}
+                }
+                audioTrack = null
+                onStatus("Voice paused — phone call")
+            }
+            AudioManager.AUDIOFOCUS_GAIN -> {
+                focusPaused = false
+                onStatus("Voice resumed")
+                if (desiredCapture) beginCapture()
+            }
+        }
+    }
+
+    private fun requestCallAudioFocus() {
+        if (focusRequest != null) return
+        val attrs = AudioAttributes.Builder()
+            .setUsage(AudioAttributes.USAGE_VOICE_COMMUNICATION)
+            .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
+            .build()
+        val request = AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN)
+            .setAudioAttributes(attrs)
+            .setOnAudioFocusChangeListener(focusListener)
+            .build()
+        focusRequest = request
+        val result = audioManager.requestAudioFocus(request)
+        // Losing the request outright (e.g. a call is already active when the
+        // ride starts) is handled the same way as losing it mid-ride.
+        if (result == AudioManager.AUDIOFOCUS_REQUEST_FAILED) {
+            focusPaused = true
+        }
+    }
+
+    private fun abandonCallAudioFocus() {
+        focusRequest?.let { runCatching { audioManager.abandonAudioFocusRequest(it) } }
+        focusRequest = null
+    }
 
     fun setRoute(newRoute: AudioRoute) {
         route = newRoute
@@ -132,6 +193,18 @@ class AudioEngine(
 
     @SuppressLint("MissingPermission")
     fun startTransmit() {
+        desiredCapture = true
+        requestCallAudioFocus()
+        if (focusPaused) {
+            // A call is already active; beginCapture() runs automatically
+            // once AUDIOFOCUS_GAIN comes back, same as a mid-ride interruption.
+            onStatus("Voice paused — phone call in progress")
+            return
+        }
+        beginCapture()
+    }
+
+    private fun beginCapture() {
         if (!capturing.compareAndSet(false, true)) return
 
         var recorder: AudioRecord? = null
@@ -250,6 +323,7 @@ class AudioEngine(
     }
 
     fun stopTransmit() {
+        desiredCapture = false
         capturing.set(false)
     }
 
@@ -293,13 +367,17 @@ class AudioEngine(
 
                 if (pending.isNotEmpty()) {
                     idleTicks = 0
-                    val mixed = if (pending.size == 1) pending[0] else mixFrames(pending)
-                    val track = ensureTrack()
-                    if (track != null) {
-                        try {
-                            track.write(mixed, 0, mixed.size, AudioTrack.WRITE_BLOCKING)
-                            lastMixedWriteMs = System.currentTimeMillis()
-                        } catch (_: Throwable) {
+                    // Drain queues even while paused for a call, so audio
+                    // doesn't burst out all at once the moment focus returns.
+                    if (!focusPaused) {
+                        val mixed = if (pending.size == 1) pending[0] else mixFrames(pending)
+                        val track = ensureTrack()
+                        if (track != null) {
+                            try {
+                                track.write(mixed, 0, mixed.size, AudioTrack.WRITE_BLOCKING)
+                                lastMixedWriteMs = System.currentTimeMillis()
+                            } catch (_: Throwable) {
+                            }
                         }
                     }
                 } else {
@@ -346,6 +424,7 @@ class AudioEngine(
 
     fun release() {
         stopTransmit()
+        abandonCallAudioFocus()
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             try { audioManager.clearCommunicationDevice() } catch (_: Throwable) {}
         } else {

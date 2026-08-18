@@ -606,13 +606,16 @@ class MainActivity : AppCompatActivity(), MeshNode.Listener, LobbyNode.Listener,
 
     private fun updateAudioUi(text: String) {
         binding.audioStatus.text = text
+        val pausedForCall = text.contains("phone call", true)
         binding.homeAudioStatus.text = when {
+            pausedForCall -> "Voice paused — phone call"
             text.contains("Bluetooth", true) || text.contains("headset", true) -> "Helmet audio • noise reduction ready"
             text.contains("sleep", true) || text.contains("Reconnect", true) || text.contains("Waiting", true) -> "Audio waiting for connection"
             else -> "Phone audio • noise reduction ready"
         }
 
         binding.audioTile.text = when {
+            pausedForCall -> "PAUSED — CALL"
             text.contains("Bluetooth", true) || text.contains("headset", true) -> "HELMET AUDIO"
             text.contains("sleep", true) || text.contains("Reconnect", true) || text.contains("Waiting", true) -> "MIC STANDBY"
             else -> "VOICE CLEAN"
