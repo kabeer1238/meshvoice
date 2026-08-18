@@ -1,0 +1,87 @@
+name: Build RideMesh APK
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ "main", "master" ]
+  pull_request:
+    branches: [ "main", "master" ]
+
+permissions:
+  contents: write
+
+# Beta 1 release gate: unit tests + Android lint + APK packaging
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+      - name: Install Android 35 SDK
+        run: sdkmanager "platforms;android-35" "build-tools;35.0.0"
+      - name: Set up Gradle 8.13
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.13'
+      - name: Test, lint and build Beta 1
+        id: compile
+        shell: bash
+        run: |
+          set -o pipefail
+          {
+            echo "RideMesh Beta 1.1 CI $(date -u +'%Y-%m-%dT%H:%M:%SZ')"
+            echo "Commit: $GITHUB_SHA"
+            echo "=== UNIT TESTS ==="
+            gradle --no-daemon testDebugUnitTest
+            echo "=== ANDROID LINT ==="
+            gradle --no-daemon lintDebug
+            echo "=== APK BUILD ==="
+            gradle --no-daemon assembleDebug
+          } 2>&1 | tee build.log
+      - name: Upload Beta 1 APK
+        id: apk_artifact
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: RideMesh-Beta1-apk
+          path: app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+      - name: Upload lint report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: RideMesh-Beta1-lint
+          path: app/build/reports/lint-results-debug.html
+          if-no-files-found: ignore
+      - name: Publish build result
+        if: always() && github.event_name != 'pull_request'
+        shell: bash
+        env:
+          APK_ARTIFACT_ID: ${{ steps.apk_artifact.outputs.artifact-id }}
+        run: |
+          mkdir -p dist
+          cp build.log dist/last-build.txt 2>/dev/null || echo "Build ended before logged build step" > dist/last-build.txt
+          if [ -f app/build/outputs/apk/debug/app-debug.apk ]; then
+            cp app/build/outputs/apk/debug/app-debug.apk dist/RideMesh-Beta1.apk
+            echo "" >> dist/last-build.txt
+            echo "RESULT: APK_BUILT" >> dist/last-build.txt
+            echo "ARTIFACT_ID: ${APK_ARTIFACT_ID}" >> dist/last-build.txt
+          else
+            echo "" >> dist/last-build.txt
+            echo "RESULT: BUILD_FAILED" >> dist/last-build.txt
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add dist/last-build.txt
+          if [ -f dist/RideMesh-Beta1.apk ]; then git add dist/RideMesh-Beta1.apk; fi
+          if ! git diff --cached --quiet; then
+            git commit -m "Publish RideMesh Beta 1 build result [skip ci]"
+            git push
+          fi

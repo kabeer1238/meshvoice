@@ -1,0 +1,110 @@
+syntax = "proto3";
+
+package ridemesh.v1;
+
+option java_package = "com.bikemesh.ridemesh.protocol.v1";
+option java_multiple_files = true;
+
+// Canonical cross-platform RideMesh wire contract.
+// IDs are 16-byte UUID values unless a field explicitly says otherwise.
+
+enum PacketType {
+  PACKET_TYPE_UNSPECIFIED = 0;
+  AUDIO = 1;
+  PRESENCE = 2;
+  CONTROL = 3;
+  ACK = 4;
+  ROUTE = 5;
+  SOS = 6;
+  KEY = 7;
+}
+
+enum Priority {
+  PRIORITY_NORMAL = 0;
+  PRIORITY_HIGH = 1;
+  PRIORITY_CRITICAL = 2;
+}
+
+enum AudioCodec {
+  AUDIO_CODEC_PCM16 = 0;
+  AUDIO_CODEC_OPUS = 1;
+}
+
+enum EncryptionMode {
+  ENCRYPTION_NONE = 0;
+  ENCRYPTION_AEAD_GROUP = 1;
+}
+
+message Envelope {
+  uint32 protocol_version = 1;
+  bytes packet_id = 2;
+  bytes origin_node_id = 3;
+  bytes previous_hop_node_id = 4;
+  string ride_id = 5;
+
+  // Empty means group/broadcast delivery according to packet type.
+  bytes destination_node_id = 6;
+
+  PacketType packet_type = 7;
+  uint32 ttl = 8;
+  uint32 hop_count = 9;
+  uint64 sequence = 10;
+  uint64 timestamp_ms = 11;
+  Priority priority = 12;
+  uint32 flags = 13;
+
+  // Transport-independent encryption metadata.
+  EncryptionMode encryption = 14;
+  uint32 key_epoch = 15;
+  bytes nonce = 16;
+
+  // Plaintext for ENCRYPTION_NONE; ciphertext otherwise.
+  bytes payload = 17;
+}
+
+message AudioFrame {
+  AudioCodec codec = 1;
+  uint32 sample_rate_hz = 2;
+  uint32 channels = 3;
+  uint32 frame_duration_ms = 4;
+  bytes audio = 5;
+}
+
+message Presence {
+  bytes node_id = 1;
+  string rider_name = 2;
+  string client_platform = 3;
+  string client_version = 4;
+  uint64 sent_at_ms = 5;
+}
+
+message Ack {
+  bytes packet_id = 1;
+  bytes acknowledging_node_id = 2;
+  uint64 received_at_ms = 3;
+}
+
+message RouteMetric {
+  string transport = 1;
+  uint32 estimated_rtt_ms = 2;
+  uint32 jitter_ms = 3;
+  float packet_loss = 4;
+  uint32 hop_count = 5;
+  bool internet = 6;
+}
+
+message RouteAnnouncement {
+  bytes node_id = 1;
+  repeated RouteMetric paths = 2;
+  uint64 sent_at_ms = 3;
+}
+
+message Sos {
+  bytes sender_node_id = 1;
+  string rider_name = 2;
+  string message = 3;
+  double latitude = 4;
+  double longitude = 5;
+  bool has_location = 6;
+  uint64 sent_at_ms = 7;
+}

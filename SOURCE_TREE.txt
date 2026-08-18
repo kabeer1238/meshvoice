@@ -1,0 +1,18 @@
+RideMeshMVP/
+├── app/
+│   ├── build.gradle.kts
+│   └── src/
+│       ├── main/
+│       │   ├── AndroidManifest.xml
+│       │   ├── java/com/bikemesh/ridemesh/
+│       │   │   ├── MainActivity.kt
+│       │   │   ├── audio/AudioEngine.kt
+│       │   │   ├── mesh/MeshNode.kt
+│       │   │   ├── mesh/MeshPacket.kt
+│       │   │   └── service/RideService.kt
+│       │   └── res/...
+│       └── test/java/com/bikemesh/ridemesh/mesh/MeshPacketTest.kt
+├── build.gradle.kts
+├── settings.gradle.kts
+├── gradle.properties
+└── README.md

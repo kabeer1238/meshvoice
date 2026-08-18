@@ -1,0 +1,41 @@
+name: Export RideMesh Source Review Package
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ "main" ]
+    paths:
+      - ".github/workflows/source-review.yml"
+  pull_request:
+    branches: [ "main" ]
+
+permissions:
+  contents: read
+
+jobs:
+  export:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Prepare clean source snapshot
+        run: |
+          rm -rf review-src
+          mkdir -p review-src
+          rsync -a ./ review-src/ \
+            --exclude '.git/' \
+            --exclude 'review-src/' \
+            --exclude '**/build/' \
+            --exclude 'dist/' \
+            --exclude '*.apk' \
+            --exclude '*.aab' \
+            --exclude '*.zip'
+          echo "$GITHUB_SHA" > review-src/GITHUB_COMMIT.txt
+
+      - name: Upload source snapshot
+        uses: actions/upload-artifact@v4
+        with:
+          name: RideMesh-Android-Beta1-Source-Review
+          path: review-src
+          if-no-files-found: error
