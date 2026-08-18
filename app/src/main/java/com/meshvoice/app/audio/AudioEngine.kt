@@ -204,6 +204,7 @@ class AudioEngine(
         beginCapture()
     }
 
+    @SuppressLint("MissingPermission")
     private fun beginCapture() {
         if (!capturing.compareAndSet(false, true)) return
 
