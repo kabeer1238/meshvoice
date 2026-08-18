@@ -5,6 +5,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Test
+import java.nio.ByteBuffer
 import java.util.UUID
 
 /**
@@ -21,6 +22,7 @@ class InternetNodeTest {
         override fun onInternetState(connected: Boolean, message: String) = Unit
         override fun onInternetAudio(audio: ByteArray) = Unit
         override fun onInternetPeerCount(count: Int) = Unit
+        override fun onInternetPeerListChanged(peers: List<InternetNode.InternetPeer>) = Unit
     }
 
     private fun node() = InternetNode(silentListener)
@@ -64,6 +66,48 @@ class InternetNodeTest {
         val decoded = n.decode(encoded)
         assertNotNull(decoded)
         assertEquals(0, decoded!!.audio.size)
+    }
+
+    @Test
+    fun presenceRoundTripCarriesRiderName() {
+        val n = node()
+        val origin = UUID.randomUUID()
+        val encoded = n.encodePresence(origin, "Kabeer", 555L)
+
+        val decoded = n.decodePresence(encoded)
+        assertNotNull(decoded)
+        assertEquals(origin, decoded!!.origin)
+        assertEquals("Kabeer", decoded.name)
+    }
+
+    @Test
+    fun presenceDecodeOfOlderNameLessPacketDefaultsToRider() {
+        val n = node()
+        val origin = UUID.randomUUID()
+        // Pre-v1.1 presence packets were exactly PRESENCE_BYTES with no name
+        // suffix at all -- must not be rejected just because it's shorter.
+        val legacy = ByteBuffer.allocate(24)
+            .putLong(origin.mostSignificantBits)
+            .putLong(origin.leastSignificantBits)
+            .putLong(999L)
+            .array()
+
+        val decoded = n.decodePresence(legacy)
+        assertNotNull(decoded)
+        assertEquals(origin, decoded!!.origin)
+        assertEquals("Rider", decoded.name)
+    }
+
+    @Test
+    fun presenceNameIsTruncatedNotOverflowed() {
+        val n = node()
+        val longName = "A".repeat(200)
+        val encoded = n.encodePresence(UUID.randomUUID(), longName, 1L)
+        val decoded = n.decodePresence(encoded)
+        assertNotNull(decoded)
+        // Must be capped, not the full 200 chars -- otherwise a malicious or
+        // buggy peer could inflate every heartbeat packet arbitrarily.
+        assert(decoded!!.name.length <= 20) { "name not capped: ${decoded.name.length} chars" }
     }
 
     @Test

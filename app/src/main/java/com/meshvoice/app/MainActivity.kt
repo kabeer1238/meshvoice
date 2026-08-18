@@ -57,6 +57,8 @@ class MainActivity : AppCompatActivity(), MeshNode.Listener, LobbyNode.Listener,
     private var pendingAction = PendingAction.NONE
     private var directPeerCount = 0
     private var internetPeerCount = 0
+    private var localRiders: List<RiderEntry> = emptyList()
+    private var internetRiders: List<RiderEntry> = emptyList()
     private var meshRunning = false
     private var internetConnectedSinceMs = 0L
     private var lastMeshRefreshMs = 0L
@@ -429,7 +431,7 @@ class MainActivity : AppCompatActivity(), MeshNode.Listener, LobbyNode.Listener,
             audioEngine.selectCommunicationDevice()
 
             ensureLocalMeshRunning("initial fallback")
-            internetNode.start(code)
+            internetNode.start(code, rider)
 
             binding.activeRideCode.text = code
             showScreen(Screen.ACTIVE)
@@ -580,6 +582,9 @@ class MainActivity : AppCompatActivity(), MeshNode.Listener, LobbyNode.Listener,
         directPeerCount = 0
         internetPeerCount = 0
         internetConnectedSinceMs = 0L
+        localRiders = emptyList()
+        internetRiders = emptyList()
+        updateRidersButtonLabel()
         binding.riderCount.text = "RIDE ACTIVE"
         binding.meshStatus.text = "CONNECTING…"
         binding.networkTile.text = "CONNECTING"
@@ -709,6 +714,11 @@ class MainActivity : AppCompatActivity(), MeshNode.Listener, LobbyNode.Listener,
         }
     }
 
+    override fun onPeerListChanged(peers: List<MeshNode.ConnectedPeer>) {
+        localRiders = peers.map { RiderEntry(name = it.name, deviceId = it.endpointId.take(8), path = "Local mesh") }
+        runOnUiThread { updateRidersButtonLabel() }
+    }
+
     override fun onAudioPacket(audio: ByteArray) {
         if (rideStarted) audioEngine.playIncoming(audio)
     }
@@ -732,6 +742,11 @@ class MainActivity : AppCompatActivity(), MeshNode.Listener, LobbyNode.Listener,
     override fun onInternetPeerCount(count: Int) {
         internetPeerCount = count
         runOnUiThread { updateTransportStatus() }
+    }
+
+    override fun onInternetPeerListChanged(peers: List<InternetNode.InternetPeer>) {
+        internetRiders = peers.map { RiderEntry(name = it.name, deviceId = it.id, path = "Internet") }
+        runOnUiThread { updateRidersButtonLabel() }
     }
 
     override fun onInternetAudio(audio: ByteArray) {
@@ -853,10 +868,36 @@ class MainActivity : AppCompatActivity(), MeshNode.Listener, LobbyNode.Listener,
         }
     }
 
+    /** One rider currently reachable over either transport, merged for display. */
+    private data class RiderEntry(val name: String, val deviceId: String, val path: String)
+
+    /** Merges local-mesh and Internet riders, de-duplicating by name so a rider
+     * reachable on both paths at once (mesh handover) shows once, not twice. */
+    private fun allConnectedRiders(): List<RiderEntry> {
+        val merged = LinkedHashMap<String, RiderEntry>()
+        for (r in internetRiders) merged[r.name] = r
+        for (r in localRiders) merged.putIfAbsent(r.name, r)
+        return merged.values.toList()
+    }
+
+    private fun updateRidersButtonLabel() {
+        val total = allConnectedRiders().size
+        binding.activeRiders.text = if (total > 0) "RIDERS ($total)" else "RIDERS"
+    }
+
     private fun showRidersDialog() {
+        val riders = allConnectedRiders()
         val internetTotal = if (internetNode.isConnected()) internetPeerCount + 1 else 0
 
         val message = buildString {
+            if (riders.isEmpty()) {
+                append("No other riders connected yet.\n\n")
+            } else {
+                riders.forEachIndexed { index, r ->
+                    append("${index + 1}. ${r.name}  •  ${r.path}  •  ${r.deviceId}\n")
+                }
+                append("\n")
+            }
             if (internetNode.isConnected()) {
                 append("Internet group: $internetTotal rider${if (internetTotal == 1) "" else "s"}\n")
             }

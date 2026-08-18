@@ -24,10 +24,14 @@ import kotlin.random.Random
  * remains TEST-ONLY infrastructure.
  */
 class InternetNode(private val listener: Listener) {
+    /** One rider currently visible over the Internet path, for the riders list. */
+    data class InternetPeer(val id: String, val name: String)
+
     interface Listener {
         fun onInternetState(connected: Boolean, message: String)
         fun onInternetAudio(audio: ByteArray)
         fun onInternetPeerCount(count: Int)
+        fun onInternetPeerListChanged(peers: List<InternetPeer>)
     }
 
     private val nodeId = UUID.randomUUID()
@@ -35,8 +39,12 @@ class InternetNode(private val listener: Listener) {
     private val connected = AtomicBoolean(false)
     private val running = AtomicBoolean(false)
     private val outputLock = Any()
-    private val peers = ConcurrentHashMap<UUID, Long>()
+
+    // UUID -> (rider name, last-seen ms). Name defaults to "Rider" until the
+    // first presence heartbeat from that peer arrives.
+    private val peers = ConcurrentHashMap<UUID, Pair<String, Long>>()
     private val reportedPeerCount = AtomicInteger(-1)
+    @Volatile private var riderName: String = "Rider"
 
     @Volatile private var baseTopic: String = ""
     @Volatile private var audioTopic: String = ""
@@ -46,8 +54,9 @@ class InternetNode(private val listener: Listener) {
     @Volatile private var output: BufferedOutputStream? = null
     @Volatile private var worker: Thread? = null
 
-    fun start(rideCode: String) {
+    fun start(rideCode: String, riderName: String) {
         stop()
+        this.riderName = riderName.trim().ifBlank { "Rider" }.take(MAX_NAME_BYTES)
         val safeRide = rideCode.trim().uppercase().ifBlank { "RIDE01" }
             .replace(Regex("[^A-Z0-9_-]"), "_")
             .take(32)
@@ -194,40 +203,80 @@ class InternetNode(private val listener: Listener) {
 
     private fun publishPresence() {
         if (!connected.get()) return
-        val payload = ByteBuffer.allocate(PRESENCE_BYTES)
-            .order(ByteOrder.BIG_ENDIAN)
-            .putLong(nodeId.mostSignificantBits)
-            .putLong(nodeId.leastSignificantBits)
-            .putLong(System.currentTimeMillis())
-            .array()
-        sendMqttPublish(presenceTopic, payload)
+        sendMqttPublish(presenceTopic, encodePresence(nodeId, riderName, System.currentTimeMillis()))
     }
 
-    private fun handlePresence(payload: ByteArray) {
-        if (payload.size < PRESENCE_BYTES) return
-        try {
+    /**
+     * Presence payload: [16 bytes origin UUID][8 bytes timestamp][1 byte name
+     * length][name bytes, UTF-8]. The name suffix was added in v1.1; older
+     * packets (or anything truncated in transit) are exactly PRESENCE_BYTES
+     * long with nothing after, which decodePresence treats as an unnamed peer
+     * rather than failing to parse.
+     */
+    internal fun encodePresence(origin: UUID, name: String, timestampMs: Long): ByteArray {
+        val rawName = name.toByteArray(Charsets.UTF_8)
+        val nameLen = rawName.size.coerceAtMost(MAX_NAME_BYTES)
+        return ByteBuffer.allocate(PRESENCE_BYTES + 1 + nameLen)
+            .order(ByteOrder.BIG_ENDIAN)
+            .putLong(origin.mostSignificantBits)
+            .putLong(origin.leastSignificantBits)
+            .putLong(timestampMs)
+            .put(nameLen.toByte())
+            .put(rawName, 0, nameLen)
+            .array()
+    }
+
+    internal data class PresenceInfo(val origin: UUID, val name: String)
+
+    internal fun decodePresence(payload: ByteArray): PresenceInfo? {
+        if (payload.size < PRESENCE_BYTES) return null
+        return try {
             val buffer = ByteBuffer.wrap(payload).order(ByteOrder.BIG_ENDIAN)
             val origin = UUID(buffer.long, buffer.long)
             buffer.long // sender timestamp; local receive time is used for expiry
-            if (origin == nodeId) return
-            markPeer(origin)
+            val name = if (buffer.remaining() > 0) {
+                val len = (buffer.get().toInt() and 0xFF).coerceAtMost(buffer.remaining())
+                val bytes = ByteArray(len)
+                buffer.get(bytes)
+                String(bytes, Charsets.UTF_8).ifBlank { "Rider" }
+            } else {
+                "Rider"
+            }
+            PresenceInfo(origin, name)
         } catch (_: Throwable) {
+            null
         }
     }
 
-    private fun markPeer(id: UUID) {
-        peers[id] = System.currentTimeMillis()
+    private fun handlePresence(payload: ByteArray) {
+        val info = decodePresence(payload) ?: return
+        if (info.origin == nodeId) return
+        markPeer(info.origin, info.name)
+    }
+
+    private fun markPeer(id: UUID, name: String? = null) {
+        val resolvedName = name ?: peers[id]?.first ?: "Rider"
+        peers[id] = resolvedName to System.currentTimeMillis()
         notifyPeerCount()
+        notifyPeerList()
     }
 
     private fun prunePeers(now: Long) {
-        peers.entries.removeIf { now - it.value > PRESENCE_TIMEOUT_MS }
+        peers.entries.removeIf { now - it.value.second > PRESENCE_TIMEOUT_MS }
         notifyPeerCount()
+        notifyPeerList()
     }
 
     private fun clearPeers() {
         peers.clear()
         notifyPeerCount(force = true)
+        notifyPeerList()
+    }
+
+    private fun notifyPeerList() {
+        listener.onInternetPeerListChanged(
+            peers.entries.map { (id, value) -> InternetPeer(id.toString().take(8), value.first) }
+        )
     }
 
     private fun notifyPeerCount(force: Boolean = false) {
@@ -408,6 +457,7 @@ class InternetNode(private val listener: Listener) {
         private const val RECONNECT_DELAY_MS = 2_000L
         private const val RECONNECT_MAX_DELAY_MS = 30_000L
         private const val PRESENCE_BYTES = 24
+        private const val MAX_NAME_BYTES = 20
         private const val MAGIC = 0x524D4931 // RMI1
         private const val VERSION: Byte = 1
 

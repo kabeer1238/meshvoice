@@ -36,10 +36,14 @@ class MeshNode(
 ) {
     enum class LabRole { NORMAL, A, B, C }
 
+    /** One currently-connected local mesh peer, for display in the riders list. */
+    data class ConnectedPeer(val endpointId: String, val name: String, val role: LabRole)
+
     interface Listener {
         fun onLog(message: String)
         fun onDirectPeerCount(count: Int)
         fun onAudioPacket(audio: ByteArray)
+        fun onPeerListChanged(peers: List<ConnectedPeer>)
     }
 
     private val client: ConnectionsClient = Nearby.getConnectionsClient(context)
@@ -115,6 +119,7 @@ class MeshNode(
                 listener.onLog("Connection failed: ${resolution.status.statusCode}")
             }
             listener.onDirectPeerCount(connected.size)
+            listener.onPeerListChanged(currentPeers())
         }
 
         override fun onDisconnected(endpointId: String) {
@@ -122,6 +127,7 @@ class MeshNode(
             requested.remove(endpointId)
             listener.onLog("Peer disconnected: ${displayName(endpointNames[endpointId] ?: endpointId)}")
             listener.onDirectPeerCount(connected.size)
+            listener.onPeerListChanged(currentPeers())
         }
     }
 
@@ -195,6 +201,7 @@ class MeshNode(
         requested.clear()
         endpointNames.clear()
         listener.onDirectPeerCount(0)
+        listener.onPeerListChanged(emptyList())
     }
 
     fun sendLocalAudio(audio: ByteArray) {
@@ -245,6 +252,13 @@ class MeshNode(
             LabRole.C -> remote == LabRole.B
             LabRole.NORMAL -> true
         }
+    }
+
+    private fun currentPeers(): List<ConnectedPeer> = connected.map { endpointId ->
+        val raw = endpointNames[endpointId] ?: endpointId
+        val parts = raw.split('|')
+        val name = if (parts.size >= 2) parts[1] else "Rider"
+        ConnectedPeer(endpointId, name, parseLabRole(raw))
     }
 
     private fun displayName(endpointName: String): String {
