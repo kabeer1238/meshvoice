@@ -1,5 +1,5 @@
-RideMesh Beta 1.1 CI 2026-08-18T12:56:41Z
-Commit: dc2431ffd0436415d78804ffaa4747593814bec2
+RideMesh Beta 1.1 CI 2026-08-18T13:45:38Z
+Commit: d0e06c01a961a084b7d89b9506c8fd8e65906de0
 === UNIT TESTS ===
 To honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer to https://docs.gradle.org/8.13/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.
 Daemon will be stopped at the end of the build 
@@ -15,29 +15,29 @@ Daemon will be stopped at the end of the build
 > Task :app:checkDebugAarMetadata
 > Task :app:parseDebugLocalResources
 > Task :app:compileDebugNavigationResources
-> Task :app:mapDebugSourceSetPaths
 > Task :app:dataBindingGenBaseClassesDebug
+> Task :app:mapDebugSourceSetPaths
 > Task :app:createDebugCompatibleScreenManifests
 > Task :app:extractDeepLinksDebug
 > Task :app:processDebugMainManifest
 > Task :app:processDebugManifest
-> Task :app:preDebugUnitTestBuild UP-TO-DATE
-> Task :app:javaPreCompileDebug
-> Task :app:javaPreCompileDebugUnitTest
 > Task :app:processDebugManifestForPackage
+> Task :app:javaPreCompileDebug
+> Task :app:preDebugUnitTestBuild UP-TO-DATE
+> Task :app:javaPreCompileDebugUnitTest
 > Task :app:processDebugResources
 > Task :app:compileDebugKotlin
 > Task :app:compileDebugJavaWithJavac
-> Task :app:processDebugJavaRes
-> Task :app:bundleDebugClassesToCompileJar
 > Task :app:bundleDebugClassesToRuntimeJar
+> Task :app:bundleDebugClassesToCompileJar
+> Task :app:processDebugJavaRes
 > Task :app:compileDebugUnitTestKotlin
 > Task :app:compileDebugUnitTestJavaWithJavac NO-SOURCE
 > Task :app:processDebugUnitTestJavaRes
 > Task :app:testDebugUnitTest
-gradle/actions: Writing build results to /home/runner/work/_temp/.gradle-actions/build-results/compile-1787057806567.json
+gradle/actions: Writing build results to /home/runner/work/_temp/.gradle-actions/build-results/compile-1787060743207.json
 
-BUILD SUCCESSFUL in 37s
+BUILD SUCCESSFUL in 43s
 27 actionable tasks: 27 executed
 === ANDROID LINT ===
 To honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer to https://docs.gradle.org/8.13/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.
@@ -81,9 +81,9 @@ Daemon will be stopped at the end of the build
 Wrote HTML report to file:///home/runner/work/meshvoice/meshvoice/app/build/reports/lint-results-debug.html
 
 > Task :app:lintDebug
-gradle/actions: Writing build results to /home/runner/work/_temp/.gradle-actions/build-results/compile-1787057842546.json
+gradle/actions: Writing build results to /home/runner/work/_temp/.gradle-actions/build-results/compile-1787060785956.json
 
-BUILD SUCCESSFUL in 36s
+BUILD SUCCESSFUL in 39s
 31 actionable tasks: 10 executed, 21 up-to-date
 === APK BUILD ===
 To honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer to https://docs.gradle.org/8.13/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.
@@ -127,19 +127,19 @@ Daemon will be stopped at the end of the build
 > Task :app:mergeDebugNativeLibs NO-SOURCE
 > Task :app:mergeLibDexDebug
 > Task :app:stripDebugDebugSymbols NO-SOURCE
-> Task :app:mergeProjectDexDebug
-> Task :app:mergeDebugJavaResource
 > Task :app:validateSigningDebug
 > Task :app:writeDebugAppMetadata
 > Task :app:writeDebugSigningConfigVersions
+> Task :app:mergeProjectDexDebug
+> Task :app:mergeDebugJavaResource
 > Task :app:mergeExtDexDebug
 > Task :app:packageDebug
 > Task :app:createDebugApkListingFileRedirect
 > Task :app:assembleDebug
-gradle/actions: Writing build results to /home/runner/work/_temp/.gradle-actions/build-results/compile-1787057879648.json
+gradle/actions: Writing build results to /home/runner/work/_temp/.gradle-actions/build-results/compile-1787060825544.json
 
-BUILD SUCCESSFUL in 20s
+BUILD SUCCESSFUL in 21s
 39 actionable tasks: 18 executed, 21 up-to-date
 
 RESULT: APK_BUILT
-ARTIFACT_ID: 9325362696
+ARTIFACT_ID: 9327171329
