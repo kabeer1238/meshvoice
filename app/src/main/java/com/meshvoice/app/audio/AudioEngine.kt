@@ -14,9 +14,7 @@ import android.media.audiofx.AutomaticGainControl
 import android.media.audiofx.NoiseSuppressor
 import android.os.Build
 import java.util.ArrayDeque
-import java.util.concurrent.ArrayBlockingQueue
-import java.util.concurrent.ThreadPoolExecutor
-import java.util.concurrent.TimeUnit
+import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.math.PI
 import kotlin.math.max
@@ -36,16 +34,32 @@ class AudioEngine(
     private val audioManager = context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
     private val capturing = AtomicBoolean(false)
 
-    // Never allow seconds of old voice to queue up. If the radio/network is slower than
-    // real time we discard the oldest pending frame rather than making riders hear stale audio.
-    private val playbackExecutor = ThreadPoolExecutor(
-        1,
-        1,
-        0L,
-        TimeUnit.MILLISECONDS,
-        ArrayBlockingQueue(PLAYBACK_QUEUE_FRAMES),
-        ThreadPoolExecutor.DiscardOldestPolicy(),
-    )
+    // Previously all incoming audio -- regardless of which rider sent it --
+    // was pushed into ONE shared queue and written to the AudioTrack in
+    // arrival order. With a single remote rider that's indistinguishable
+    // from correct playback, but with two or more simultaneous senders their
+    // packets interleaved chunk-by-chunk instead of being mixed, which is
+    // what produced "jittery and delayed" audio once a third phone joined.
+    //
+    // Fixed by giving each sender (origin) its own small bounded queue and
+    // running a fixed-cadence mixer thread that sums whatever frame each
+    // active origin has ready every 20ms into a single mixed frame, so N
+    // simultaneous speakers are actually mixed rather than serialized.
+    private val originQueues = ConcurrentHashMap<String, ArrayDeque<ByteArray>>()
+    private val originQueuesLock = Any()
+    private val mixerRunning = AtomicBoolean(false)
+    @Volatile private var mixerThread: Thread? = null
+
+    // Updated every time the mixer actually writes real (non-silent) audio to
+    // the track. The mic capture loop uses recency of this to infer "remote
+    // audio is probably still coming out of this device's speaker right now"
+    // and raises the local speech threshold briefly -- a partial mitigation
+    // for echo on devices where hardware AEC is weak or absent, since it
+    // makes the device less likely to re-transmit what its own mic just
+    // picked back up off its own speaker. It does not replace real AEC and
+    // will not fully eliminate echo caused by a WEAK echo canceler on the
+    // *other* party's device -- see AEC discussion in code comments below.
+    @Volatile private var lastMixedWriteMs = 0L
 
     @Volatile private var audioRecord: AudioRecord? = null
     @Volatile private var audioTrack: AudioTrack? = null
@@ -177,8 +191,23 @@ class AudioEngine(
                         val current = windFilter.process(raw)
                         val rms = pcmRms(current)
 
+                        // Partial echo mitigation: while this device's speaker is
+                        // actively rendering another rider's voice, its own mic is
+                        // the thing most likely to be picking that playback back up
+                        // (weak/absent hardware AEC on some phones, or acoustic
+                        // coupling that simply overwhelms AEC at speakerphone
+                        // volume outdoors). Raising the bar during that window makes
+                        // re-transmitting that pickup less likely without blocking a
+                        // genuine loud interruption, which still clears the higher
+                        // threshold. This is a heuristic, not real echo cancellation
+                        // -- it cannot fix a *weak AEC on the other rider's phone*,
+                        // which is the more likely cause if the echo is the other
+                        // person hearing themselves rather than you hearing yourself.
+                        val playbackActive = (System.currentTimeMillis() - lastMixedWriteMs) < ECHO_GUARD_WINDOW_MS
+                        val duckMultiplier = if (playbackActive) ECHO_GUARD_MULTIPLIER else 1.0
+
                         // Slowly learn the background level only when the frame does not look like speech.
-                        val speechThreshold = max(VAD_MIN_RMS, noiseFloor * VAD_NOISE_MULTIPLIER)
+                        val speechThreshold = max(VAD_MIN_RMS, noiseFloor * VAD_NOISE_MULTIPLIER) * duckMultiplier
                         val speech = rms >= speechThreshold
                         if (!speech) {
                             noiseFloor = (noiseFloor * 0.985) + (rms * 0.015)
@@ -224,14 +253,95 @@ class AudioEngine(
         capturing.set(false)
     }
 
-    fun playIncoming(audio: ByteArray) {
+    fun playIncoming(origin: String, audio: ByteArray) {
         if (audio.isEmpty()) return
-        playbackExecutor.execute {
-            val track = ensureTrack() ?: return@execute
-            try {
-                track.write(audio, 0, audio.size, AudioTrack.WRITE_BLOCKING)
-            } catch (_: Throwable) {}
+        synchronized(originQueuesLock) {
+            val queue = originQueues.getOrPut(origin) { ArrayDeque() }
+            // Bounded per sender: a backlogged rider's audio gets dropped
+            // rather than delaying everyone else's, same discard-oldest
+            // policy the old single queue used, just scoped per origin now.
+            if (queue.size >= PER_ORIGIN_QUEUE_FRAMES) queue.removeFirst()
+            queue.addLast(audio)
         }
+        ensureMixerRunning()
+    }
+
+    private fun ensureMixerRunning() {
+        if (!mixerRunning.compareAndSet(false, true)) return
+        val thread = Thread({ mixerLoop() }, "MeshVoice-Mixer").apply { isDaemon = true }
+        mixerThread = thread
+        thread.start()
+    }
+
+    /**
+     * Runs at a fixed ~20ms cadence for as long as the mixer stays "hot"
+     * (any origin has pending audio, or did recently). Each tick pulls at
+     * most one frame from every origin that has one ready and sums them
+     * into a single mixed frame -- real mixing, not queue interleaving --
+     * so two or more riders talking at once are actually audible together
+     * rather than chopped into alternating fragments.
+     */
+    private fun mixerLoop() {
+        var idleTicks = 0
+        try {
+            while (mixerRunning.get()) {
+                val tickStart = System.nanoTime()
+
+                val pending: List<ByteArray> = synchronized(originQueuesLock) {
+                    originQueues.values.mapNotNull { q -> if (q.isNotEmpty()) q.removeFirst() else null }
+                }
+
+                if (pending.isNotEmpty()) {
+                    idleTicks = 0
+                    val mixed = if (pending.size == 1) pending[0] else mixFrames(pending)
+                    val track = ensureTrack()
+                    if (track != null) {
+                        try {
+                            track.write(mixed, 0, mixed.size, AudioTrack.WRITE_BLOCKING)
+                            lastMixedWriteMs = System.currentTimeMillis()
+                        } catch (_: Throwable) {
+                        }
+                    }
+                } else {
+                    idleTicks++
+                    // Nothing to mix for a while -- stop the thread instead of
+                    // spinning forever on a silent ride; playIncoming() will
+                    // restart it the moment new audio arrives.
+                    if (idleTicks > MIXER_IDLE_STOP_TICKS) {
+                        mixerRunning.set(false)
+                        break
+                    }
+                }
+
+                val elapsedMs = (System.nanoTime() - tickStart) / 1_000_000L
+                val sleepMs = FRAME_MS - elapsedMs
+                if (sleepMs > 0) Thread.sleep(sleepMs)
+            }
+        } catch (_: InterruptedException) {
+        } finally {
+            mixerRunning.set(false)
+        }
+    }
+
+    /** Sums PCM16 samples from every provided frame and clamps to avoid wraparound clipping artifacts. */
+    private fun mixFrames(frames: List<ByteArray>): ByteArray {
+        val length = frames.maxOf { it.size }
+        val out = ByteArray(length)
+        var i = 0
+        while (i + 1 < length) {
+            var sum = 0
+            for (f in frames) {
+                if (i + 1 >= f.size) continue
+                val lo = f[i].toInt() and 0xff
+                val hi = f[i + 1].toInt()
+                sum += ((hi shl 8) or lo).toShort().toInt()
+            }
+            val clamped = sum.coerceIn(Short.MIN_VALUE.toInt(), Short.MAX_VALUE.toInt())
+            out[i] = (clamped and 0xff).toByte()
+            out[i + 1] = ((clamped shr 8) and 0xff).toByte()
+            i += 2
+        }
+        return out
     }
 
     fun release() {
@@ -252,7 +362,9 @@ class AudioEngine(
         }
         audioTrack = null
         try { audioManager.mode = AudioManager.MODE_NORMAL } catch (_: Throwable) {}
-        playbackExecutor.shutdownNow()
+        mixerRunning.set(false)
+        mixerThread?.interrupt()
+        synchronized(originQueuesLock) { originQueues.clear() }
     }
 
     private fun ensureTrack(): AudioTrack? {
@@ -395,7 +507,11 @@ class AudioEngine(
         private const val SAMPLES_PER_FRAME = SAMPLE_RATE * FRAME_MS / 1000
         private const val FRAME_BYTES = SAMPLES_PER_FRAME * 2
 
-        private const val PLAYBACK_QUEUE_FRAMES = 8 // ~160 ms maximum pending audio
+        private const val PER_ORIGIN_QUEUE_FRAMES = 4 // ~80 ms max pending audio per sender
+        private const val MIXER_IDLE_STOP_TICKS = 100 // ~2s of silence before the mixer thread parks itself
+
+        private const val ECHO_GUARD_WINDOW_MS = 300L
+        private const val ECHO_GUARD_MULTIPLIER = 1.8
 
         private const val VAD_PREROLL_FRAMES = 3    // 60 ms of audio before speech trigger
         private const val VAD_HANGOVER_FRAMES = 12 // 240 ms after speech falls below threshold

@@ -20,7 +20,7 @@ class InternetNodeTest {
 
     private val silentListener = object : InternetNode.Listener {
         override fun onInternetState(connected: Boolean, message: String) = Unit
-        override fun onInternetAudio(audio: ByteArray) = Unit
+        override fun onInternetAudio(origin: String, audio: ByteArray) = Unit
         override fun onInternetPeerCount(count: Int) = Unit
         override fun onInternetPeerListChanged(peers: List<InternetNode.InternetPeer>) = Unit
     }

@@ -29,7 +29,7 @@ class InternetNode(private val listener: Listener) {
 
     interface Listener {
         fun onInternetState(connected: Boolean, message: String)
-        fun onInternetAudio(audio: ByteArray)
+        fun onInternetAudio(origin: String, audio: ByteArray)
         fun onInternetPeerCount(count: Int)
         fun onInternetPeerListChanged(peers: List<InternetPeer>)
     }
@@ -195,7 +195,7 @@ class InternetNode(private val listener: Listener) {
                 val packet = decode(payload) ?: return
                 if (packet.origin == nodeId) return
                 markPeer(packet.origin)
-                listener.onInternetAudio(packet.audio)
+                listener.onInternetAudio(packet.origin.toString(), packet.audio)
             }
             presenceTopic -> handlePresence(payload)
         }

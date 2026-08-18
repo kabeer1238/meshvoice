@@ -719,8 +719,8 @@ class MainActivity : AppCompatActivity(), MeshNode.Listener, LobbyNode.Listener,
         runOnUiThread { updateRidersButtonLabel() }
     }
 
-    override fun onAudioPacket(audio: ByteArray) {
-        if (rideStarted) audioEngine.playIncoming(audio)
+    override fun onAudioPacket(origin: String, audio: ByteArray) {
+        if (rideStarted) audioEngine.playIncoming("local:$origin", audio)
     }
 
     override fun onInternetState(connected: Boolean, message: String) {
@@ -749,8 +749,8 @@ class MainActivity : AppCompatActivity(), MeshNode.Listener, LobbyNode.Listener,
         runOnUiThread { updateRidersButtonLabel() }
     }
 
-    override fun onInternetAudio(audio: ByteArray) {
-        if (rideStarted) audioEngine.playIncoming(audio)
+    override fun onInternetAudio(origin: String, audio: ByteArray) {
+        if (rideStarted) audioEngine.playIncoming("net:$origin", audio)
     }
 
     private fun updateTransportStatus() {

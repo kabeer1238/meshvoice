@@ -13,8 +13,32 @@ android {
         applicationId = "com.meshvoice.app"
         minSdk = 26
         targetSdk = 35
-        versionCode = 11
-        versionName = "1.1.0-beta1.1"
+        versionCode = 12
+        versionName = "1.2.0-beta1.2"
+    }
+
+    // Every CI build must be signed with the SAME key, or Android refuses to
+    // install a new APK over an existing one with the same applicationId --
+    // it just fails silently from the user's point of view, and the person
+    // ends up still running whatever old build happened to install first.
+    // Gradle's default debug signing auto-generates a NEW random keystore on
+    // any machine where ~/.android/debug.keystore doesn't already exist,
+    // which is every fresh GitHub Actions runner. Pinning an explicit,
+    // checked-in keystore here is what makes "download the new APK and
+    // install over the old one" actually work build after build.
+    signingConfigs {
+        getByName("debug") {
+            storeFile = file("../keystore/debug.keystore")
+            storePassword = "android"
+            keyAlias = "androiddebugkey"
+            keyPassword = "android"
+        }
+    }
+
+    buildTypes {
+        getByName("debug") {
+            signingConfig = signingConfigs.getByName("debug")
+        }
     }
 
     buildFeatures {

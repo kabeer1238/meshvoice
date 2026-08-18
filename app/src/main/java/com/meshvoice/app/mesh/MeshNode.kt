@@ -42,7 +42,7 @@ class MeshNode(
     interface Listener {
         fun onLog(message: String)
         fun onDirectPeerCount(count: Int)
-        fun onAudioPacket(audio: ByteArray)
+        fun onAudioPacket(origin: String, audio: ByteArray)
         fun onPeerListChanged(peers: List<ConnectedPeer>)
     }
 
@@ -79,7 +79,7 @@ class MeshNode(
                 }
 
                 if (packet.origin != nodeId && packet.audio.isNotEmpty()) {
-                    listener.onAudioPacket(packet.audio)
+                    listener.onAudioPacket(packet.origin.toString(), packet.audio)
                 }
 
                 if (packet.ttl > 0) {
