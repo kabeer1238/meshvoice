@@ -1,5 +1,5 @@
-RideMesh Beta 1.1 CI 2026-08-18T14:40:08Z
-Commit: f34b0e3aa617121f8cc56f75ce0240bc8b23b341
+RideMesh Beta 1.1 CI 2026-08-18T14:43:40Z
+Commit: ce03759977b9689be71039e4a5a8919004cdda63
 === UNIT TESTS ===
 To honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer to https://docs.gradle.org/8.13/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.
 Daemon will be stopped at the end of the build 
@@ -14,10 +14,10 @@ Daemon will be stopped at the end of the build
 > Task :app:mergeDebugResources
 > Task :app:checkDebugAarMetadata
 > Task :app:compileDebugNavigationResources
-> Task :app:parseDebugLocalResources
 > Task :app:mapDebugSourceSetPaths
-> Task :app:dataBindingGenBaseClassesDebug
+> Task :app:parseDebugLocalResources
 > Task :app:createDebugCompatibleScreenManifests
+> Task :app:dataBindingGenBaseClassesDebug
 > Task :app:extractDeepLinksDebug
 > Task :app:processDebugMainManifest
 > Task :app:processDebugManifest
@@ -28,16 +28,16 @@ Daemon will be stopped at the end of the build
 > Task :app:processDebugResources
 > Task :app:compileDebugKotlin
 > Task :app:compileDebugJavaWithJavac
-> Task :app:bundleDebugClassesToCompileJar
 > Task :app:bundleDebugClassesToRuntimeJar
+> Task :app:bundleDebugClassesToCompileJar
 > Task :app:processDebugJavaRes
 > Task :app:compileDebugUnitTestKotlin
 > Task :app:compileDebugUnitTestJavaWithJavac NO-SOURCE
 > Task :app:processDebugUnitTestJavaRes
 > Task :app:testDebugUnitTest
-gradle/actions: Writing build results to /home/runner/work/_temp/.gradle-actions/build-results/compile-1787064010536.json
+gradle/actions: Writing build results to /home/runner/work/_temp/.gradle-actions/build-results/compile-1787064224000.json
 
-BUILD SUCCESSFUL in 25s
+BUILD SUCCESSFUL in 31s
 27 actionable tasks: 27 executed
 === ANDROID LINT ===
 To honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer to https://docs.gradle.org/8.13/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.
@@ -79,78 +79,67 @@ Daemon will be stopped at the end of the build
 
 > Task :app:lintReportDebug
 Wrote HTML report to file:///home/runner/work/meshvoice/meshvoice/app/build/reports/lint-results-debug.html
-Lint found 1 error and 129 warnings. First failure:
-/home/runner/work/meshvoice/meshvoice/app/src/main/java/com/meshvoice/app/audio/AudioEngine.kt:222: Error: Call requires permission which may be rejected by user: code should explicitly check to see if permission is available (with checkPermission) or explicitly handle a potential SecurityException [MissingPermission]
-            recorder = AudioRecord(
-                       ^
 
+> Task :app:lintDebug
+gradle/actions: Writing build results to /home/runner/work/_temp/.gradle-actions/build-results/compile-1787064255957.json
 
-> Task :app:lintDebug FAILED
-Lint found 1 error, 129 warnings. First failure:
-
-/home/runner/work/meshvoice/meshvoice/app/src/main/java/com/meshvoice/app/audio/AudioEngine.kt:222: Error: Call requires permission which may be rejected by user: code should explicitly check to see if permission is available (with checkPermission) or explicitly handle a potential SecurityException [MissingPermission]
-            recorder = AudioRecord(
-                       ^
-
-   Explanation for issues of type "MissingPermission":
-   This check scans through your code and libraries and looks at the APIs
-   being used, and checks this against the set of permissions required to
-   access those APIs. If the code using those APIs is called at runtime, then
-   the program will crash.
-
-   Furthermore, for permissions that are revocable (with targetSdkVersion 23),
-   client code must also be prepared to handle the calls throwing an exception
-   if the user rejects the request for permission at runtime.
-
-
-The full lint text report is located at:
-  /home/runner/work/meshvoice/meshvoice/app/build/intermediates/lint_intermediate_text_report/debug/lintReportDebug/lint-results-debug.txt
-gradle/actions: Writing build results to /home/runner/work/_temp/.gradle-actions/build-results/compile-1787064036153.json
-
-FAILURE: Build failed with an exception.
-
-* What went wrong:
-Execution failed for task ':app:lintDebug'.
-> Lint found errors in the project; aborting build.
-  
-  Fix the issues identified by lint, or create a baseline to see only new errors.
-  To create a baseline, run `gradlew updateLintBaseline` after adding the following to the module's build.gradle file:
-  ```
-  android {
-      lint {
-          baseline = file("lint-baseline.xml")
-      }
-  }
-  ```
-  For more details, see https://developer.android.com/studio/write/lint#snapshot
-  
-  Lint found 1 error, 129 warnings. First failure:
-  
-  /home/runner/work/meshvoice/meshvoice/app/src/main/java/com/meshvoice/app/audio/AudioEngine.kt:222: Error: Call requires permission which may be rejected by user: code should explicitly check to see if permission is available (with checkPermission) or explicitly handle a potential SecurityException [MissingPermission]
-              recorder = AudioRecord(
-                         ^
-  
-     Explanation for issues of type "MissingPermission":
-     This check scans through your code and libraries and looks at the APIs
-     being used, and checks this against the set of permissions required to
-     access those APIs. If the code using those APIs is called at runtime, then
-     the program will crash.
-  
-     Furthermore, for permissions that are revocable (with targetSdkVersion 23),
-     client code must also be prepared to handle the calls throwing an exception
-     if the user rejects the request for permission at runtime.
-  
-  
-  The full lint text report is located at:
-    /home/runner/work/meshvoice/meshvoice/app/build/intermediates/lint_intermediate_text_report/debug/lintReportDebug/lint-results-debug.txt
-
-* Try:
-> Run with --stacktrace option to get the stack trace.
-> Run with --info or --debug option to get more log output.
-> Run with --scan to get full insights.
-> Get more help at https://help.gradle.org.
-
-BUILD FAILED in 27s
+BUILD SUCCESSFUL in 33s
 31 actionable tasks: 10 executed, 21 up-to-date
+=== APK BUILD ===
+To honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer to https://docs.gradle.org/8.13/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.
+Daemon will be stopped at the end of the build 
+> Task :app:preBuild UP-TO-DATE
+> Task :app:preDebugBuild UP-TO-DATE
+> Task :app:mergeDebugNativeDebugMetadata NO-SOURCE
+> Task :app:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :app:dataBindingMergeDependencyArtifactsDebug UP-TO-DATE
+> Task :app:generateDebugResValues UP-TO-DATE
+> Task :app:generateDebugResources UP-TO-DATE
+> Task :app:mergeDebugResources UP-TO-DATE
+> Task :app:packageDebugResources UP-TO-DATE
+> Task :app:processDebugNavigationResources UP-TO-DATE
+> Task :app:parseDebugLocalResources UP-TO-DATE
+> Task :app:dataBindingGenBaseClassesDebug UP-TO-DATE
+> Task :app:checkDebugAarMetadata UP-TO-DATE
+> Task :app:compileDebugNavigationResources UP-TO-DATE
+> Task :app:mapDebugSourceSetPaths UP-TO-DATE
+> Task :app:createDebugCompatibleScreenManifests UP-TO-DATE
+> Task :app:extractDeepLinksDebug UP-TO-DATE
+> Task :app:processDebugMainManifest UP-TO-DATE
+> Task :app:processDebugManifest UP-TO-DATE
+> Task :app:processDebugManifestForPackage UP-TO-DATE
+> Task :app:processDebugResources UP-TO-DATE
+> Task :app:compileDebugKotlin UP-TO-DATE
+> Task :app:javaPreCompileDebug UP-TO-DATE
+> Task :app:compileDebugJavaWithJavac UP-TO-DATE
+> Task :app:mergeDebugShaders
+> Task :app:compileDebugShaders NO-SOURCE
+> Task :app:generateDebugAssets UP-TO-DATE
+> Task :app:mergeDebugAssets
+> Task :app:compressDebugAssets
+> Task :app:desugarDebugFileDependencies
+> Task :app:l8DexDesugarLibDebug
+> Task :app:dexBuilderDebug
+> Task :app:processDebugJavaRes UP-TO-DATE
+> Task :app:mergeDebugGlobalSynthetics
+> Task :app:mergeDebugJniLibFolders
+> Task :app:checkDebugDuplicateClasses
+> Task :app:mergeDebugNativeLibs NO-SOURCE
+> Task :app:mergeLibDexDebug
+> Task :app:stripDebugDebugSymbols NO-SOURCE
+> Task :app:validateSigningDebug
+> Task :app:writeDebugAppMetadata
+> Task :app:writeDebugSigningConfigVersions
+> Task :app:mergeProjectDexDebug
+> Task :app:mergeDebugJavaResource
+> Task :app:mergeExtDexDebug
+> Task :app:packageDebug
+> Task :app:createDebugApkListingFileRedirect
+> Task :app:assembleDebug
+gradle/actions: Writing build results to /home/runner/work/_temp/.gradle-actions/build-results/compile-1787064289610.json
 
-RESULT: BUILD_FAILED
+BUILD SUCCESSFUL in 18s
+39 actionable tasks: 18 executed, 21 up-to-date
+
+RESULT: APK_BUILT
+ARTIFACT_ID: 9329422100
