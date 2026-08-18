@@ -1,4 +1,4 @@
-package com.bikemesh.ridemesh.mesh
+package com.meshvoice.app.mesh
 
 import java.nio.ByteBuffer
 import java.nio.ByteOrder

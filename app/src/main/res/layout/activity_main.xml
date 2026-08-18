@@ -3,7 +3,7 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/black">
+    android:background="@color/surface">
 
     <!-- HOME -->
     <ScrollView
@@ -27,7 +27,7 @@
                 <ImageView
                     android:layout_width="44dp"
                     android:layout_height="44dp"
-                    android:contentDescription="Ride Mesh"
+                    android:contentDescription="MeshVoice"
                     android:scaleType="centerInside"
                     android:src="@drawable/ridemesh_icon" />
 
@@ -43,7 +43,7 @@
                         android:layout_height="wrap_content"
                         android:fontFamily="sans-serif-condensed"
                         android:letterSpacing="0.13"
-                        android:text="RIDE MESH"
+                        android:text="MESHVOICE"
                         android:textColor="@color/white"
                         android:textSize="20sp"
                         android:textStyle="bold" />
@@ -84,7 +84,7 @@
                 android:layout_height="118dp"
                 android:layout_marginTop="18dp"
                 android:adjustViewBounds="true"
-                android:contentDescription="Ride Mesh by AutopilotIndia"
+                android:contentDescription="MeshVoice by AutopilotIndia"
                 android:scaleType="centerInside"
                 android:src="@drawable/ridemesh_logo" />
 
@@ -435,7 +435,7 @@
             <ImageView
                 android:layout_width="40dp"
                 android:layout_height="40dp"
-                android:contentDescription="Ride Mesh"
+                android:contentDescription="MeshVoice"
                 android:src="@drawable/ridemesh_icon" />
 
             <LinearLayout
@@ -450,7 +450,7 @@
                     android:layout_height="wrap_content"
                     android:fontFamily="sans-serif-condensed"
                     android:letterSpacing="0.09"
-                    android:text="RIDE MESH"
+                    android:text="MESHVOICE"
                     android:textColor="@color/accent"
                     android:textSize="18sp"
                     android:textStyle="bold" />

@@ -1,4 +1,4 @@
-package com.bikemesh.ridemesh.mesh
+package com.meshvoice.app.mesh
 
 import android.content.Context
 import com.google.android.gms.nearby.Nearby
@@ -178,7 +178,7 @@ class MeshNode(
                 .addOnFailureListener { listener.onLog("Advertising error: ${it.javaClass.simpleName}: ${it.message ?: "unknown"}") }
 
             client.startDiscovery(SERVICE_ID, discoveryCallback, discovery)
-                .addOnSuccessListener { listener.onLog("Searching for nearby RideMesh riders") }
+                .addOnSuccessListener { listener.onLog("Searching for nearby MeshVoice riders") }
                 .addOnFailureListener { listener.onLog("Discovery error: ${it.javaClass.simpleName}: ${it.message ?: "unknown"}") }
         } catch (t: Throwable) {
             running = false
@@ -255,7 +255,7 @@ class MeshNode(
     }
 
     companion object {
-        private const val SERVICE_ID = "com.bikemesh.ridemesh.voice"
+        private const val SERVICE_ID = "com.meshvoice.app.voice"
         private val STRATEGY = Strategy.P2P_CLUSTER
         private const val MAX_TTL = 4
     }

@@ -1,4 +1,4 @@
-package com.bikemesh.ridemesh.transport
+package com.meshvoice.app.transport
 
 import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals

@@ -1,4 +1,4 @@
-package com.bikemesh.ridemesh.transport
+package com.meshvoice.app.transport
 
 import java.io.BufferedInputStream
 import java.io.BufferedOutputStream
@@ -58,7 +58,7 @@ class InternetNode(private val listener: Listener) {
         running.set(true)
         listener.onInternetState(false, "Internet relay connecting…")
 
-        worker = Thread({ connectionLoop() }, "RideMesh-Internet").apply {
+        worker = Thread({ connectionLoop() }, "MeshVoice-Internet").apply {
             isDaemon = true
             start()
         }

@@ -14,5 +14,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "RideMesh"
+rootProject.name = "MeshVoice"
 include(":app")

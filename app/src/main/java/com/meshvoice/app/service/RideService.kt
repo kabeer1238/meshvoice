@@ -1,4 +1,4 @@
-package com.bikemesh.ridemesh.service
+package com.meshvoice.app.service
 
 import android.app.NotificationChannel
 import android.app.NotificationManager
@@ -8,7 +8,7 @@ import android.content.pm.ServiceInfo
 import android.os.IBinder
 import androidx.core.app.NotificationCompat
 import androidx.core.app.ServiceCompat
-import com.bikemesh.ridemesh.R
+import com.meshvoice.app.R
 
 class RideService : Service() {
     override fun onCreate() {
@@ -20,7 +20,7 @@ class RideService : Service() {
         val notification = NotificationCompat.Builder(this, CHANNEL)
             .setSmallIcon(android.R.drawable.stat_sys_headset)
             .setContentTitle(getString(R.string.app_name))
-            .setContentText("RideMesh intercom is active")
+            .setContentText("MeshVoice intercom is active")
             .setOngoing(true)
             .setCategory(NotificationCompat.CATEGORY_CALL)
             .build()

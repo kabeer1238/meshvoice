@@ -1,4 +1,4 @@
-package com.bikemesh.ridemesh.transport
+package com.meshvoice.app.transport
 
 /**
  * Platform-client transport boundary.

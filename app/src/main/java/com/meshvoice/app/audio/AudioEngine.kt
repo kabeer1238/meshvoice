@@ -1,4 +1,4 @@
-package com.bikemesh.ridemesh.audio
+package com.meshvoice.app.audio
 
 import android.annotation.SuppressLint
 import android.content.Context
@@ -211,7 +211,7 @@ class AudioEngine(
                     if (audioRecord === activeRecorder) audioRecord = null
                     selectCommunicationDevice()
                 }
-            }, "RideMesh-Mic").start()
+            }, "MeshVoice-Mic").start()
         } catch (t: Throwable) {
             capturing.set(false)
             try { recorder?.release() } catch (_: Throwable) {}

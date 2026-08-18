@@ -1,26 +1,41 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <!--
+      MeshVoice palette: white + orange on a very dark green background.
+      "black" is kept as true black rather than tinted green, since it is
+      used as colorOnPrimary (text sitting on top of the orange accent) and
+      needs to stay high-contrast there rather than match the app background.
+    -->
     <color name="black">#000000</color>
-    <color name="surface">#0A0D0D</color>
-    <color name="panel">#111716</color>
-    <color name="panel2">#161D1C</color>
-    <color name="white">#F2F4F3</color>
-    <color name="muted">#8A9694</color>
-    <color name="faint">#4F5957</color>
-    <color name="accent">#00E5D4</color>
-    <color name="accent_dim">#2600E5D4</color>
-    <color name="green">#3DDC84</color>
-    <color name="amber">#FFB300</color>
+
+    <!-- Very dark green background family -->
+    <color name="surface">#071811</color>
+    <color name="panel">#0D2418</color>
+    <color name="panel2">#122C1E</color>
+    <color name="border">#1C3A28</color>
+
+    <!-- Text -->
+    <color name="white">#F7F5F0</color>
+    <color name="muted">#9DB3A3</color>
+    <color name="faint">#5B7266</color>
+
+    <!-- Orange accent (was teal) -->
+    <color name="accent">#FF7A29</color>
+    <color name="accent_dim">#26FF7A29</color>
+
+    <!-- Status colours: kept distinct from the green background and the
+         orange accent so connection state still reads unambiguously -->
+    <color name="green">#4CD964</color>
+    <color name="amber">#FFC107</color>
     <color name="danger">#FF4757</color>
-    <color name="border">#1F2928</color>
 
     <!-- Launcher icon + splash -->
-    <color name="icon_background">#000000</color>
-    <color name="splash_background">#000000</color>
+    <color name="icon_background">#071811</color>
+    <color name="splash_background">#071811</color>
 
     <!-- Connection path status colours -->
-    <color name="path_local">#00E5D4</color>
-    <color name="path_internet">#3DDC84</color>
-    <color name="path_reconnecting">#FFB300</color>
+    <color name="path_local">#FF7A29</color>
+    <color name="path_internet">#4CD964</color>
+    <color name="path_reconnecting">#FFC107</color>
     <color name="path_none">#FF4757</color>
 </resources>

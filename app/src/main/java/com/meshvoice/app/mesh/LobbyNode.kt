@@ -1,4 +1,4 @@
-package com.bikemesh.ridemesh.mesh
+package com.meshvoice.app.mesh
 
 import android.content.Context
 import com.google.android.gms.nearby.Nearby
@@ -134,7 +134,7 @@ class LobbyNode(
                 .addOnFailureListener { listener.onLobbyLog("Nearby rider advertising error: ${it.message ?: "unknown"}") }
 
             client.startDiscovery(SERVICE_ID, discoveryCallback, discovery)
-                .addOnSuccessListener { listener.onLobbyLog("Searching for RideMesh riders nearby") }
+                .addOnSuccessListener { listener.onLobbyLog("Searching for MeshVoice riders nearby") }
                 .addOnFailureListener { listener.onLobbyLog("Nearby rider discovery error: ${it.message ?: "unknown"}") }
         } catch (t: Throwable) {
             running = false
@@ -195,7 +195,7 @@ class LobbyNode(
     }
 
     companion object {
-        private const val SERVICE_ID = "com.bikemesh.ridemesh.lobby"
+        private const val SERVICE_ID = "com.meshvoice.app.lobby"
         private const val INVITE_PREFIX = "RIDEMESH_INVITE"
         private val STRATEGY = Strategy.P2P_CLUSTER
     }

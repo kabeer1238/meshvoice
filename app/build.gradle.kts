@@ -6,11 +6,11 @@ plugins {
 }
 
 android {
-    namespace = "com.bikemesh.ridemesh"
+    namespace = "com.meshvoice.app"
     compileSdk = 35
 
     defaultConfig {
-        applicationId = "com.bikemesh.ridemesh"
+        applicationId = "com.meshvoice.app"
         minSdk = 26
         targetSdk = 35
         versionCode = 11

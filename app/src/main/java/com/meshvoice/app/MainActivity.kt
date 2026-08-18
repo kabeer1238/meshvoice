@@ -1,4 +1,4 @@
-package com.bikemesh.ridemesh
+package com.meshvoice.app
 
 import android.Manifest
 import android.app.AlertDialog
@@ -23,13 +23,13 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
-import com.bikemesh.ridemesh.audio.AudioEngine
-import com.bikemesh.ridemesh.audio.AudioRoute
-import com.bikemesh.ridemesh.databinding.ActivityMainBinding
-import com.bikemesh.ridemesh.mesh.LobbyNode
-import com.bikemesh.ridemesh.mesh.MeshNode
-import com.bikemesh.ridemesh.service.RideService
-import com.bikemesh.ridemesh.transport.InternetNode
+import com.meshvoice.app.audio.AudioEngine
+import com.meshvoice.app.audio.AudioRoute
+import com.meshvoice.app.databinding.ActivityMainBinding
+import com.meshvoice.app.mesh.LobbyNode
+import com.meshvoice.app.mesh.MeshNode
+import com.meshvoice.app.service.RideService
+import com.meshvoice.app.transport.InternetNode
 import com.google.android.gms.mlkit.barcode.GmsBarcodeScannerOptions
 import com.google.android.gms.mlkit.barcode.GmsBarcodeScanning
 import com.google.android.material.button.MaterialButton
@@ -164,7 +164,7 @@ class MainActivity : AppCompatActivity(), MeshNode.Listener, LobbyNode.Listener,
 
         applySelectedAudioRoute()
         showScreen(Screen.HOME)
-        clearNearbyRiders("Tap FIND to discover RideMesh riders nearby.")
+        clearNearbyRiders("Tap FIND to discover MeshVoice riders nearby.")
         applyPowerUi()
 
         binding.createRide.setOnClickListener {
@@ -282,7 +282,7 @@ class MainActivity : AppCompatActivity(), MeshNode.Listener, LobbyNode.Listener,
         val options = arrayOf(
             "Show QR code",
             "Share QR code",
-            "Find nearby RideMesh riders",
+            "Find nearby MeshVoice riders",
         )
         AlertDialog.Builder(this)
             .setTitle("Add riders without ending the call")
@@ -341,7 +341,7 @@ class MainActivity : AppCompatActivity(), MeshNode.Listener, LobbyNode.Listener,
         try {
             val bitmap = buildRideQrBitmap(code)
             val shareDir = File(cacheDir, "shared").apply { mkdirs() }
-            val file = File(shareDir, "RideMesh-$code.png")
+            val file = File(shareDir, "MeshVoice-$code.png")
             FileOutputStream(file).use { out ->
                 bitmap.compress(Bitmap.CompressFormat.PNG, 100, out)
             }
@@ -349,11 +349,11 @@ class MainActivity : AppCompatActivity(), MeshNode.Listener, LobbyNode.Listener,
             val intent = Intent(Intent.ACTION_SEND).apply {
                 type = "image/png"
                 putExtra(Intent.EXTRA_STREAM, uri)
-                putExtra(Intent.EXTRA_TEXT, "Join my RideMesh ride: $code\nOpen RideMesh → Join a Ride → Scan QR")
-                clipData = ClipData.newUri(contentResolver, "RideMesh invite QR", uri)
+                putExtra(Intent.EXTRA_TEXT, "Join my MeshVoice ride: $code\nOpen MeshVoice → Join a Ride → Scan QR")
+                clipData = ClipData.newUri(contentResolver, "MeshVoice invite QR", uri)
                 addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
             }
-            startActivity(Intent.createChooser(intent, "Share RideMesh QR"))
+            startActivity(Intent.createChooser(intent, "Share MeshVoice QR"))
         } catch (t: Throwable) {
             log("Could not share QR: ${t.message ?: t.javaClass.simpleName}")
             AlertDialog.Builder(this)
@@ -374,7 +374,7 @@ class MainActivity : AppCompatActivity(), MeshNode.Listener, LobbyNode.Listener,
             .addOnSuccessListener { barcode ->
                 val code = parseRideQr(barcode.rawValue.orEmpty())
                 if (code == null) {
-                    log("That QR is not a RideMesh invite")
+                    log("That QR is not a MeshVoice invite")
                     return@addOnSuccessListener
                 }
 
@@ -536,7 +536,7 @@ class MainActivity : AppCompatActivity(), MeshNode.Listener, LobbyNode.Listener,
 
         AlertDialog.Builder(this)
             .setTitle("Could not start ride")
-            .setMessage("RideMesh stayed open. Check Bluetooth, Wi-Fi and permissions, then try again.")
+            .setMessage("MeshVoice stayed open. Check Bluetooth, Wi-Fi and permissions, then try again.")
             .setPositiveButton("REPORT BUG") { _, _ -> openWhatsAppBugReport() }
             .setNegativeButton("CLOSE", null)
             .show()
@@ -561,7 +561,7 @@ class MainActivity : AppCompatActivity(), MeshNode.Listener, LobbyNode.Listener,
     private fun confirmStopRide() {
         AlertDialog.Builder(this)
             .setTitle("End ride?")
-            .setMessage("This disconnects your RideMesh voice session.")
+            .setMessage("This disconnects your MeshVoice voice session.")
             .setNegativeButton("CANCEL", null)
             .setPositiveButton("END RIDE") { _, _ -> stopRide() }
             .show()
@@ -803,7 +803,7 @@ class MainActivity : AppCompatActivity(), MeshNode.Listener, LobbyNode.Listener,
 
             if (rideStarted) {
                 AlertDialog.Builder(this)
-                    .setTitle("Nearby RideMesh rider found")
+                    .setTitle("Nearby MeshVoice rider found")
                     .setMessage("$riderName is nearby${if (rideCode.isNotBlank()) " • currently showing $rideCode" else ""}. Invite them to ${normalizedRideCode()}?\n\nYour current Internet conversation continues while you invite.")
                     .setPositiveButton("INVITE") { _, _ ->
                         lobbyNode.invite(endpointId, normalizedRideCode(), binding.riderName.text?.toString().orEmpty())
@@ -911,7 +911,7 @@ class MainActivity : AppCompatActivity(), MeshNode.Listener, LobbyNode.Listener,
         val checked = if (binding.batterySaver.isChecked) 0 else 1
 
         AlertDialog.Builder(this)
-            .setTitle("RideMesh settings & help")
+            .setTitle("MeshVoice settings & help")
             .setSingleChoiceItems(modes, checked) { dialog, which ->
                 binding.batterySaver.isChecked = which == 0
                 saveSettings()
@@ -955,14 +955,14 @@ class MainActivity : AppCompatActivity(), MeshNode.Listener, LobbyNode.Listener,
 
     private fun openWhatsAppBugReport() {
         val options = arrayOf(
-            "Join RideMesh bug report group",
+            "Join MeshVoice bug report group",
             "Send direct WhatsApp report to +91 9188664823",
         )
         AlertDialog.Builder(this)
-            .setTitle("Report a RideMesh bug")
+            .setTitle("Report a MeshVoice bug")
             .setItems(options) { _, which ->
                 if (which == 0) {
-                    openExternalUri(BUG_REPORT_GROUP_URL, "Could not open the RideMesh bug report group")
+                    openExternalUri(BUG_REPORT_GROUP_URL, "Could not open the MeshVoice bug report group")
                 } else {
                     openDirectWhatsAppBugReport()
                 }
@@ -973,7 +973,7 @@ class MainActivity : AppCompatActivity(), MeshNode.Listener, LobbyNode.Listener,
 
     private fun openDirectWhatsAppBugReport() {
         val message = buildString {
-            append("RideMesh bug report\n")
+            append("MeshVoice bug report\n")
             append("Ride code: ${normalizedRideCode()}\n")
             append("Phone: ${Build.MANUFACTURER} ${Build.MODEL}\n")
             append("Android: ${Build.VERSION.RELEASE}\n")
@@ -985,7 +985,7 @@ class MainActivity : AppCompatActivity(), MeshNode.Listener, LobbyNode.Listener,
     }
 
     private fun openRideMeshCommunity() {
-        openExternalUri(COMMUNITY_URL, "Could not open RideMesh community link")
+        openExternalUri(COMMUNITY_URL, "Could not open MeshVoice community link")
     }
 
     private fun openExternalUri(url: String, failureMessage: String) {
