@@ -5,8 +5,10 @@ import org.concentus.OpusDecoder
 import org.concentus.OpusEncoder
 
 /**
- * Wraps Concentus (a pure-Java Opus port -- no NDK/native build) so every
- * call into that library lives in one small, easily-fixed file rather than
+ * Wraps Concentus (a pure-Java Opus port, vendored directly under
+ * app/src/main/java/org/concentus -- see VENDORED_FROM.md in that
+ * directory for why it's source rather than a Maven dependency) so every
+ * call into that code lives in one small, easily-fixed file rather than
  * scattered through AudioEngine.
  *
  * Compresses each 20ms/16kHz mono voice frame from ~640 bytes of raw PCM16
