@@ -14,6 +14,7 @@ import android.media.audiofx.AcousticEchoCanceler
 import android.media.audiofx.AutomaticGainControl
 import android.media.audiofx.NoiseSuppressor
 import android.os.Build
+import org.concentus.OpusDecoder
 import java.util.ArrayDeque
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicBoolean
@@ -48,6 +49,9 @@ class AudioEngine(
     // simultaneous speakers are actually mixed rather than serialized.
     private val originQueues = ConcurrentHashMap<String, ArrayDeque<ByteArray>>()
     private val originQueuesLock = Any()
+    // One persistent Opus decoder per remote origin -- see OpusCodec's class
+    // doc for why this can't be a single shared decoder.
+    private val opusDecoders = ConcurrentHashMap<String, OpusDecoder>()
     private val mixerRunning = AtomicBoolean(false)
     @Volatile private var mixerThread: Thread? = null
 
@@ -255,6 +259,19 @@ class AudioEngine(
                 var noiseFloor = VAD_INITIAL_NOISE_FLOOR
 
                 try {
+                    // No raw-PCM fallback here on purpose: every receiver now
+                    // expects Opus, so a device that silently sent raw PCM
+                    // instead would just have its audio fail to decode -- and
+                    // vanish silently -- on everyone else's phone. Better to
+                    // fail this capture session loudly via the catch below
+                    // (with the same cleanup every other failure here gets)
+                    // than mix codecs on the wire.
+                    val encoder = OpusCodec.newEncoder()
+
+                    fun transmit(pcm: ByteArray) {
+                        OpusCodec.encode(encoder, pcm)?.let(onCapturedFrame)
+                    }
+
                     while (capturing.get()) {
                         val read = activeRecorder.read(frame, 0, frame.size)
                         if (read <= 0) continue
@@ -294,9 +311,9 @@ class AudioEngine(
                         if (sending) {
                             if (!wasSending) {
                                 // Preserve the beginning of the first word instead of clipping it.
-                                while (preRoll.isNotEmpty()) onCapturedFrame(preRoll.removeFirst())
+                                while (preRoll.isNotEmpty()) transmit(preRoll.removeFirst())
                             }
-                            onCapturedFrame(current)
+                            transmit(current)
                         } else {
                             if (preRoll.size >= VAD_PREROLL_FRAMES) preRoll.removeFirst()
                             preRoll.addLast(current)
@@ -330,13 +347,15 @@ class AudioEngine(
 
     fun playIncoming(origin: String, audio: ByteArray) {
         if (audio.isEmpty()) return
+        val decoder = opusDecoders.getOrPut(origin) { OpusCodec.newDecoder() }
+        val pcm = OpusCodec.decode(decoder, audio, SAMPLES_PER_FRAME) ?: return
         synchronized(originQueuesLock) {
             val queue = originQueues.getOrPut(origin) { ArrayDeque() }
             // Bounded per sender: a backlogged rider's audio gets dropped
             // rather than delaying everyone else's, same discard-oldest
             // policy the old single queue used, just scoped per origin now.
             if (queue.size >= PER_ORIGIN_QUEUE_FRAMES) queue.removeFirst()
-            queue.addLast(audio)
+            queue.addLast(pcm)
         }
         ensureMixerRunning()
     }
@@ -445,6 +464,7 @@ class AudioEngine(
         mixerRunning.set(false)
         mixerThread?.interrupt()
         synchronized(originQueuesLock) { originQueues.clear() }
+        opusDecoders.clear()
     }
 
     private fun ensureTrack(): AudioTrack? {

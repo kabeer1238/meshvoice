@@ -68,5 +68,9 @@ dependencies {
     implementation("com.google.android.gms:play-services-nearby:19.4.0")
     implementation("com.google.android.gms:play-services-code-scanner:16.1.0")
     implementation("com.google.zxing:core:3.5.4")
+    // Pure-Java Opus codec (no NDK/native build needed), published on Maven
+    // Central. Used to compress voice audio before it goes over either
+    // transport -- see AudioEngine's encode/decode wrapper.
+    implementation("io.github.jaredmdobson:concentus:1.0.2")
     testImplementation("junit:junit:4.13.2")
 }
