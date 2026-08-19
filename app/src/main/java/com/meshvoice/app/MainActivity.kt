@@ -243,7 +243,7 @@ class MainActivity : AppCompatActivity(), MeshNode.Listener, LobbyNode.Listener,
      */
     private fun startNearbyLobby() {
         if (!radiosReady()) {
-            log("Nearby riders unavailable: turn ON Bluetooth and Wi-Fi, then try again")
+            log("Nearby riders unavailable: turn ON Bluetooth, then try again")
             return
         }
 
@@ -461,7 +461,11 @@ class MainActivity : AppCompatActivity(), MeshNode.Listener, LobbyNode.Listener,
     }
 
     private fun ensureLocalMeshRunning(reason: String) {
-        if (!rideStarted || meshRunning || !radiosReady()) return
+        if (!rideStarted || meshRunning) return
+        if (!radiosReady()) {
+            log("Local mesh unavailable • turn on Bluetooth to reach nearby riders")
+            return
+        }
         meshNode.start(
             binding.riderName.text?.toString().orEmpty(),
             normalizedRideCode(),
@@ -469,7 +473,8 @@ class MainActivity : AppCompatActivity(), MeshNode.Listener, LobbyNode.Listener,
         )
         meshRunning = true
         lastMeshRefreshMs = System.currentTimeMillis()
-        log("Local mesh awake • $reason")
+        val rangeNote = if (wifiEnabled()) "" else " • Wi-Fi off, Bluetooth range only"
+        log("Local mesh awake • $reason$rangeNote")
     }
 
     private fun sleepLocalMesh(reason: String) {
@@ -544,20 +549,28 @@ class MainActivity : AppCompatActivity(), MeshNode.Listener, LobbyNode.Listener,
             .show()
     }
 
+    /**
+     * Bluetooth is the one radio Nearby Connections cannot work without at
+     * all. Wi-Fi being enabled unlocks the Wi-Fi Direct medium (longer range,
+     * higher bandwidth), but its absence should not block mesh entirely --
+     * many riders leave Wi-Fi off on the road since there's no network to
+     * join anyway, and still expect Bluetooth-range mesh to work. Previously
+     * this required both radios on, so Wi-Fi-off + mobile-data-for-Internet
+     * (a common combination) silently prevented local mesh from ever
+     * starting, with no error shown anywhere.
+     */
     private fun radiosReady(): Boolean {
-        val bluetoothOn = try {
+        return try {
             getSystemService(BluetoothManager::class.java).adapter?.isEnabled == true
         } catch (_: Throwable) {
             false
         }
+    }
 
-        val wifiOn = try {
-            applicationContext.getSystemService(WifiManager::class.java).isWifiEnabled
-        } catch (_: Throwable) {
-            false
-        }
-
-        return bluetoothOn && wifiOn
+    private fun wifiEnabled(): Boolean = try {
+        applicationContext.getSystemService(WifiManager::class.java).isWifiEnabled
+    } catch (_: Throwable) {
+        false
     }
 
     private fun confirmStopRide() {
